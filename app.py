@@ -1,10 +1,26 @@
 import streamlit as st
 import joblib
 import re
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import pandas as pd
+import os
+
+# -----------------------------
+# Ensure NLTK data is downloaded
+# -----------------------------
+@st.cache_data(show_spinner=False)
+def ensure_nltk_data():
+    resources = ["punkt", "stopwords"]
+    for r in resources:
+        try:
+            nltk.data.find(f"tokenizers/{r}" if r == "punkt" else f"corpora/{r}")
+        except LookupError:
+            nltk.download(r)
+
+ensure_nltk_data()
 
 # -----------------------------
 # Fonction de prétraitement
@@ -19,15 +35,23 @@ def preprocess_text(text):
     tokens = [stemmer.stem(w) for w in tokens]
     return " ".join(tokens)
 
-# -----------------------------
-# Chargement du modèle
-# -----------------------------
+
 @st.cache_resource
 def load_model():
-    model = joblib.load("models/sentiment_model.pkl")
-    tfidf = joblib.load("models/tfidf_vectorizer.pkl")
+    base_dir = os.path.dirname(__file__)
+    model_path = os.path.join(base_dir, "models", "sentiment_model.pkl")
+    tfidf_path = os.path.join(base_dir, "models", "tfidf_vectorizer.pkl")
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    if not os.path.exists(tfidf_path):
+        raise FileNotFoundError(f"TF-IDF file not found: {tfidf_path}")
+
+    model = joblib.load(model_path)
+    tfidf = joblib.load(tfidf_path)
     return model, tfidf
 
+# Load model
 model, tfidf = load_model()
 
 # -----------------------------
@@ -85,7 +109,9 @@ st.subheader("🔹 Fonctionnalités supplémentaires")
 #         st.dataframe(df[["text", "sentiment"]])
 
 
-
+# -----------------------------
+# Prétraitement par lot avec cache
+# -----------------------------
 @st.cache_data
 def preprocess_batch(texts):
     return [preprocess_text(t) for t in texts]
