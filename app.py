@@ -9,18 +9,28 @@ import pandas as pd
 import os
 
 # -----------------------------
-# Ensure NLTK data is downloaded
+# Download NLTK data files
 # -----------------------------
-@st.cache_data(show_spinner=False)
-def ensure_nltk_data():
-    resources = ["punkt", "stopwords"]
-    for r in resources:
-        try:
-            nltk.data.find(f"tokenizers/{r}" if r == "punkt" else f"corpora/{r}")
-        except LookupError:
-            nltk.download(r)
+@st.cache_resource
+def download_nltk_data():
+    """Download required NLTK data files"""
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+    
+    try:
+        nltk.data.find('tokenizers/punkt_tab')
+    except LookupError:
+        nltk.download('punkt_tab', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
 
-ensure_nltk_data()
+# Download NLTK data at startup
+download_nltk_data()
 
 # -----------------------------
 # Fonction de prétraitement
@@ -29,7 +39,7 @@ def preprocess_text(text):
     text = re.sub(r"<.*?>|http\S+", "", text)
     text = text.lower()
     tokens = word_tokenize(text)
-    stop_words = set(stopwords.words("english"))  # on garde anglais pour le modèle entraîné
+    stop_words = set(stopwords.words("english"))
     tokens = [w for w in tokens if w.isalpha() and w not in stop_words]
     stemmer = PorterStemmer()
     tokens = [stemmer.stem(w) for w in tokens]
@@ -92,23 +102,6 @@ if st.button("Analyser"):
 st.markdown("---")
 st.subheader("🔹 Fonctionnalités supplémentaires")
 
-# 1️⃣ Prédiction par lot à partir d'un CSV
-# uploaded_file = st.file_uploader(
-#     "Téléversez un fichier CSV avec une colonne 'text' pour analyser plusieurs textes",
-#     type=["csv"]
-# )
-# if uploaded_file:
-#     df = pd.read_csv(uploaded_file)
-#     if "text" not in df.columns:
-#         st.error("Le CSV doit contenir une colonne 'text' !")
-#     else:
-#         df["cleaned"] = df["text"].apply(preprocess_text)
-#         vectors = tfidf.transform(df["cleaned"])
-#         df["sentiment"] = model.predict(vectors)
-#         st.success("✅ Analyse terminée ! Voici les résultats :")
-#         st.dataframe(df[["text", "sentiment"]])
-
-
 # -----------------------------
 # Prétraitement par lot avec cache
 # -----------------------------
@@ -124,6 +117,7 @@ SENTIMENT_STYLES = {
     "neutral": {"color": "#1c83ffe6"} 
 }
 
+# 1️⃣ Prédiction par lot à partir d'un CSV
 uploaded_file = st.file_uploader(
     "Téléversez un fichier CSV avec une colonne 'text' pour analyser plusieurs textes",
     type=["csv"]
